@@ -59,7 +59,45 @@ def compute_objectives_from_time_series(time_series: List[Dict[str, Any]]) -> Di
     but keep the keys above at least.
     """
     # TODO (students)
-    raise NotImplementedError
+    # Initialize default values
+    # We want to find if a crash happened at ANY point, so start with 0
+    crash_count = 0
+    # We want the minimum distance across the ENTIRE episode, so start with infinity
+    min_dist = float('inf')
+
+    for frame in time_series:
+        # 1. Check for crash
+        # The 'crashed' flag is boolean in the frame data
+        if frame.get("crashed", False):
+            crash_count = 1
+        
+        # 2. Compute Distance
+        # We need both the ego position and the list of other vehicles
+        ego_data = frame.get("ego")
+        others_data = frame.get("others", [])
+
+        # Only calculate if we have valid data for this frame
+        if ego_data is not None and others_data:
+            ego_pos = np.array(ego_data["pos"])
+            
+            for other_veh in others_data:
+                other_pos = np.array(other_veh["pos"])
+                # Calculate Euclidean distance
+                dist = np.linalg.norm(ego_pos - other_pos)
+                
+                # Update the global minimum if this car is closer
+                if dist < min_dist:
+                    min_dist = dist
+    
+    # Safety fallback: If the road was empty or data missing, 
+    # set a default large distance to avoid errors later.
+    if min_dist == float('inf'):
+        min_dist = 100.0  # Arbitrary large number indicating "safe/far"
+
+    return {
+        "crash_count": crash_count,
+        "min_distance": min_dist
+    }
 
 
 def compute_fitness(objectives: Dict[str, Any]) -> float:
