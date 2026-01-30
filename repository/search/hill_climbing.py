@@ -144,8 +144,35 @@ def mutate_config(
       - multiple-parameter mutation
       - adaptive step sizes, etc.
     """
-    # TODO (students)
-    raise NotImplementedError
+    # Requirement: Do NOT modify cfg in-place (return a copy) [cite: 51, 54]
+    new_cfg = copy.deepcopy(cfg)
+    
+    # Pick a random parameter from the search space to mutate [cite: 22, 53]
+    param_to_mutate = rng.choice(list(param_spec.keys()))
+    spec = param_spec[param_to_mutate]
+    
+    current_value = new_cfg[param_to_mutate]
+    
+    # Apply mutation based on the parameter type [cite: 58, 59]
+    if spec["type"] == "int":
+        # For integers (like vehicles_count), shift by -1, 0, or 1 [cite: 56]
+        mutation = rng.integers(-1, 2) 
+        new_val = current_value + mutation
+    else:
+        # For floats (like spacing), apply a small perturbation 
+        # We use 10% of the parameter's total range as a step size
+        scale = (spec["max"] - spec["min"]) * 0.1
+        new_val = current_value + rng.uniform(-scale, scale)
+
+    # Requirement: Keep mutated values within [min, max] from param_spec 
+    new_cfg[param_to_mutate] = np.clip(new_val, spec["min"], spec["max"])
+    
+    # Requirement: If lanes_count is mutated, keep initial_lane_id valid [cite: 57, 59]
+    if "lanes_count" in new_cfg and "initial_lane_id" in new_cfg:
+        max_lane = new_cfg["lanes_count"] - 1
+        new_cfg["initial_lane_id"] = int(np.clip(new_cfg["initial_lane_id"], 0, max_lane))
+
+    return new_cfg
 
 
 # ============================================================
