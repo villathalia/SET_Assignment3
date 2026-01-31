@@ -59,46 +59,68 @@ def compute_objectives_from_time_series(time_series: List[Dict[str, Any]]) -> Di
     but keep the keys above at least.
     """
     # TODO (students)
+    NEAR_MISS_THRESHOLD = 2.0  # Threshold distance for near-miss counting (assumed pragmatically)
+
     # Initialize default values
-    # We want to find if a crash happened at ANY point, so start with 0
     crash_count = 0
-    # We want the minimum distance across the ENTIRE episode, so start with infinity
-    min_dist = float('inf')
+    min_distance = float("inf")
+    min_same_lane_distance = float("inf")
+    min_adjacent_lane_distance = float("inf")
+
+    near_miss_count = 0
+
+    lane_changes = 0
+    prev_lane_id = None
+    lane_id_missing = 0
+
+    max_deceleration = 0.0
+    max_acceleration = 0.0
+    prev_speed = None
 
     for frame in time_series:
-        # 1. Check for crash
-        # The 'crashed' flag is boolean in the frame data
+        # Check for crash
         if frame.get("crashed", False):
             crash_count = 1
         
-        # 2. Compute Distance
-        # We need both the ego position and the list of other vehicles
+        # Compute Distance
         ego_data = frame.get("ego")
-        others_data = frame.get("others", [])
+        if not ego_data:
+            continue
 
-        # Only calculate if we have valid data for this frame
-        if ego_data is not None and others_data:
-            ego_pos = np.array(ego_data["pos"])
+        ego_pos = np.array(ego_data["pos"]) # Use numpy array for easy math
+        others = frame.get("others", [])
+
+        # Find closest car in this specific frame
+        frame_min_dist = float("inf")
+        
+        for other in others:
+            if not other: continue
+            other_pos = np.array(other["pos"])
             
-            for other_veh in others_data:
-                other_pos = np.array(other_veh["pos"])
-                # Calculate Euclidean distance
-                dist = np.linalg.norm(ego_pos - other_pos)
-                
-                # Update the global minimum if this car is closer
-                if dist < min_dist:
-                    min_dist = dist
-    
-    # Safety fallback: If the road was empty or data missing, 
-    # set a default large distance to avoid errors later.
-    if min_dist == float('inf'):
-        min_dist = 100.0  # Arbitrary large number indicating "safe/far"
+            # Calculate Distance (Replaces helper._euclidean)
+            dist = np.linalg.norm(ego_pos - other_pos)
+
+            # Update Global Minimum
+            if dist < min_distance:
+                min_distance = dist
+            
+            # Update Frame Minimum
+            if dist < frame_min_dist:
+                frame_min_dist = dist
+
+        # Count Near Misses (Helps guide the search before a crash happens)
+        if frame_min_dist < NEAR_MISS_THRESHOLD:
+            near_miss_count += 1
+
+    # Safety fallback if no cars were seen
+    if min_distance == float("inf"):
+        min_distance = 100.0
 
     return {
-        "crash_count": crash_count,
-        "min_distance": min_dist
+        "crash_count": int(crash_count),
+        "min_distance": float(min_distance),
+        "near_miss_count": int(near_miss_count)
     }
-
 
 def compute_fitness(objectives: Dict[str, Any]) -> float:
     """
@@ -144,34 +166,50 @@ def mutate_config(
       - multiple-parameter mutation
       - adaptive step sizes, etc.
     """
-    # Requirement: Do NOT modify cfg in-place (return a copy) [cite: 51, 54]
     new_cfg = copy.deepcopy(cfg)
     
-    # Pick a random parameter from the search space to mutate [cite: 22, 53]
-    param_to_mutate = rng.choice(list(param_spec.keys()))
-    spec = param_spec[param_to_mutate]
-    
-    current_value = new_cfg[param_to_mutate]
-    
-    # Apply mutation based on the parameter type [cite: 58, 59]
-    if spec["type"] == "int":
-        # For integers (like vehicles_count), shift by -1, 0, or 1 [cite: 56]
-        mutation = rng.integers(-1, 2) 
-        new_val = current_value + mutation
+    # 15% chance to mutate EVERYTHING (Big jump), 85% chance to mutate ONE thing (Small step)
+    if rng.random() < 0.15:
+        params_to_mutate = list(param_spec.keys())
     else:
-        # For floats (like spacing), apply a small perturbation 
-        # We use 10% of the parameter's total range as a step size
-        scale = (spec["max"] - spec["min"]) * 0.1
-        new_val = current_value + rng.uniform(-scale, scale)
-
-    # Requirement: Keep mutated values within [min, max] from param_spec 
-    new_cfg[param_to_mutate] = np.clip(new_val, spec["min"], spec["max"])
+        params_to_mutate = [rng.choice(list(param_spec.keys()))]
     
-    # Requirement: If lanes_count is mutated, keep initial_lane_id valid [cite: 57, 59]
-    if "lanes_count" in new_cfg and "initial_lane_id" in new_cfg:
-        max_lane = new_cfg["lanes_count"] - 1
-        new_cfg["initial_lane_id"] = int(np.clip(new_cfg["initial_lane_id"], 0, max_lane))
+    for param in params_to_mutate:
+        spec = param_spec[param]
+        current_val = new_cfg[param]
+    
+        # MUTATE INTEGER (e.g., vehicles_count)
+        if spec["type"] == "int":
+            # Dynamic step size logic
+            range_val = max(1, spec["max"] - spec["min"])
+            sigma = range_val * 0.1
+            delta = rng.normal(0, sigma)
+            
+            # Ensure at least 1 unit move if delta is non-zero
+            if abs(delta) > 0.1:
+                mutation = int(np.sign(delta) * np.ceil(abs(delta))) 
+            else:
+                mutation = 0
+            
+            # Special case: Always try to move at least 1 if it's the only param we picked
+            if mutation == 0 and len(params_to_mutate) == 1:
+                mutation = int(rng.choice([-1, 1]))
+                
+            new_val = int(current_val + mutation)
+            new_cfg[param] = int(np.clip(new_val, spec["min"], spec["max"]))
 
+        # MUTATE FLOAT (e.g., spacing)
+        elif spec["type"] == "float":
+            range_width = spec["max"] - spec["min"]
+            sigma = range_width * 0.05 # 5% perturbation
+            new_val = float(rng.normal(current_val, sigma))
+            new_cfg[param] = float(np.clip(new_val, spec["min"], spec["max"]))
+
+    # CONSTRAINT: Keep initial_lane_id valid if lanes_count changed [cite: 57]
+    if "lanes_count" in new_cfg and "initial_lane_id" in new_cfg:
+        allowed_max = new_cfg["lanes_count"] - 1
+        new_cfg["initial_lane_id"] = int(np.clip(new_cfg["initial_lane_id"], 0, allowed_max))
+    
     return new_cfg
 
 
@@ -219,28 +257,98 @@ def hill_climb(
         - "evaluations": int
     """
     rng = np.random.default_rng(seed)
-
-    # TODO (students): choose initialization (base_cfg or random scenario)
-    current_cfg = dict(base_cfg)
-
-    # Evaluate initial solution (seed_base used for reproducibility)
+    
+    # 1. Initialization: Sample random start or use base_cfg
+    # (Using random start helps find crashes faster usually)
+    current_cfg = copy.deepcopy(base_cfg) 
+    
+    # Initial Eval
     seed_base = int(rng.integers(1e9))
     crashed, ts = run_episode(env_id, current_cfg, policy, defaults, seed_base)
     obj = compute_objectives_from_time_series(ts)
     cur_fit = compute_fitness(obj)
 
+    # Tracking Best
     best_cfg = copy.deepcopy(current_cfg)
     best_obj = dict(obj)
     best_fit = float(cur_fit)
     best_seed_base = seed_base
-
     history = [best_fit]
 
-    # TODO (students): implement HC loop
-    # - generate neighbors
-    # - evaluate
-    # - pick best
-    # - accept if improved
-    # - early stop on crash (optional)
+    print(f"Start Fitness: {best_fit:.4f} | Crash: {obj['crash_count']}")
 
-    raise NotImplementedError
+    # Early exit if we started with a crash
+    if crashed or obj['crash_count'] == 1:
+        print("!!! INITIAL SCENARIO CRASHED !!!")
+        return {
+            "best_cfg": best_cfg, "best_objectives": best_obj, 
+            "best_fitness": best_fit, "best_seed_base": best_seed_base, 
+            "history": history, "evaluations": 1
+        }
+
+    evals = 1
+
+    # 2. Main Loop
+    for it in range(iterations):
+        
+        # Track best neighbor in this batch
+        best_neighbor_cfg = None
+        best_neighbor_fit = float('inf')
+        best_neighbor_obj = None
+        best_neighbor_seed = None
+
+        for n in range(neighbors_per_iter):
+            # Generate Neighbor
+            cand_cfg = mutate_config(current_cfg, param_spec, rng)
+            cand_seed = int(rng.integers(1e9))
+            
+            # Evaluate
+            c_crashed, c_ts = run_episode(env_id, cand_cfg, policy, defaults, cand_seed)
+            c_obj = compute_objectives_from_time_series(c_ts)
+            c_fit = compute_fitness(c_obj)
+            evals += 1
+
+            # Check for immediate crash discovery
+            if c_crashed or c_obj['crash_count'] == 1:
+                print(f"!!! CRASH FOUND at Iteration {it}, Neighbor {n} !!!")
+                return {
+                    "best_cfg": cand_cfg,
+                    "best_objectives": c_obj,
+                    "best_fitness": c_fit,
+                    "best_seed_base": cand_seed,
+                    "history": history + [c_fit],
+                    "evaluations": evals
+                }
+
+            # Update best neighbor
+            if c_fit < best_neighbor_fit:
+                best_neighbor_fit = c_fit
+                best_neighbor_cfg = cand_cfg
+                best_neighbor_obj = c_obj
+                best_neighbor_seed = cand_seed
+
+        # 3. Selection (Steepest Ascent/Descent)
+        # If the best neighbor is better than our CURRENT position, move there
+        if best_neighbor_fit < cur_fit:
+            print(f"Iter {it}: Improved fitness {cur_fit:.4f} -> {best_neighbor_fit:.4f}")
+            current_cfg = best_neighbor_cfg
+            cur_fit = best_neighbor_fit
+            # Also update global best if strictly better
+            if cur_fit < best_fit:
+                best_cfg = current_cfg
+                best_fit = cur_fit
+                best_obj = best_neighbor_obj
+                best_seed_base = best_neighbor_seed
+        else:
+            print(f"Iter {it}: Stuck. Best neighbor ({best_neighbor_fit:.4f}) not better than current ({cur_fit:.4f})")
+
+        history.append(best_fit)
+
+    return {
+        "best_cfg": best_cfg,
+        "best_objectives": best_obj,
+        "best_fitness": best_fit,
+        "best_seed_base": best_seed_base,
+        "history": history,
+        "evaluations": evals
+    }
