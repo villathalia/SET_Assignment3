@@ -135,8 +135,16 @@ def compute_fitness(objectives: Dict[str, Any]) -> float:
 
     You can design a more refined scalarization if desired.
     """
-    # TODO (students)
-    raise NotImplementedError
+    crash = int(objectives.get("crash_count", 0))
+    min_dist = float(objectives.get("min_distance", 1e9))
+    near_miss = int(objectives.get("near_miss_count", 0))
+
+    if crash == 1:
+        # Penalize higher min_dist even during crash to find "dead center" collisions
+        return -1e6 
+
+    # Smaller distance and higher near_miss counts result in better (lower) fitness
+    return min_dist - (0.1 * near_miss)
 
 
 # ============================================================
@@ -167,7 +175,7 @@ def mutate_config(
       - adaptive step sizes, etc.
     """
     new_cfg = copy.deepcopy(cfg)
-    
+
     # 15% chance to mutate EVERYTHING (Big jump), 85% chance to mutate ONE thing (Small step)
     if rng.random() < 0.15:
         params_to_mutate = list(param_spec.keys())
@@ -175,6 +183,10 @@ def mutate_config(
         params_to_mutate = [rng.choice(list(param_spec.keys()))]
     
     for param in params_to_mutate:
+        # If the param isn't in the config, skip it to avoid KeyError
+        if param not in new_cfg:
+            continue
+
         spec = param_spec[param]
         current_val = new_cfg[param]
     
@@ -205,7 +217,7 @@ def mutate_config(
             new_val = float(rng.normal(current_val, sigma))
             new_cfg[param] = float(np.clip(new_val, spec["min"], spec["max"]))
 
-    # CONSTRAINT: Keep initial_lane_id valid if lanes_count changed [cite: 57]
+    # CONSTRAINT: Keep initial_lane_id valid if lanes_count changed
     if "lanes_count" in new_cfg and "initial_lane_id" in new_cfg:
         allowed_max = new_cfg["lanes_count"] - 1
         new_cfg["initial_lane_id"] = int(np.clip(new_cfg["initial_lane_id"], 0, allowed_max))
