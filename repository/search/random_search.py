@@ -19,14 +19,24 @@ class RandomSearch:
 
         for i in trange(n_scenarios, desc="Random search"):
             cfg = self.sample_random_config(rng)
+            breakpoint()
             for j in range(n_eval):
                 s = int(rng.integers(1e9))
-                crashed, ts = run_episode(self.env_id, cfg, self.policy, self.defaults, s)
+                crashed, ts = run_episode(
+                    self.env_id, cfg, self.policy, self.defaults, s
+                )
 
                 if crashed:
                     print(f"💥 Collision: scenario {i}, seed={s}")
                     crash_log.append({"cfg": copy.deepcopy(cfg), "seed": s})
-                    record_video_episode(self.env_id, cfg, self.policy, self.defaults, s, out_dir="videos")
+                    record_video_episode(
+                        self.env_id,
+                        cfg,
+                        self.policy,
+                        self.defaults,
+                        s,
+                        out_dir="videos",
+                    )
                     break
                 else:
                     print(f"No Crash: scenario {i}, seed={s}")
@@ -36,4 +46,5 @@ class RandomSearch:
 
     def sample_random_config(self, rng):
         from search.base_search import ScenarioSearch
+
         return ScenarioSearch.sample_random_config(self, rng)

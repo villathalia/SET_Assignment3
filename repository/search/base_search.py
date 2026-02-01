@@ -1,8 +1,10 @@
 import numpy as np
 import copy
 
+
 class ScenarioSearch:
     """Base class for scenario search algorithms."""
+
     def __init__(self, env_id, base_cfg, param_spec, policy, defaults):
         self.env_id = env_id
         self.base_cfg = base_cfg
