@@ -34,10 +34,20 @@ from envs.highway_env_utils import run_episode
 from search.base_search import ScenarioSearch
 
 import search.helper_HC as helper
+import logging
 
 # ============================================================
 # 1) OBJECTIVES FROM TIME SERIES
 # ============================================================
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(message)s",
+    handlers=[logging.FileHandler("hc_search.log")],
+)
+
+logger = logging.getLogger(__name__)
 
 
 def compute_objectives_from_time_series(
@@ -211,10 +221,10 @@ def mutate_config(
     # 15% chance to mutate everything, 85% chance to mutate one thing
     if rng.random() < 0.15:
         params_to_mutate = list(param_spec.keys())
-        print(f"Mutating params : {params_to_mutate}")
+        logger.info(f"Mutating params : {params_to_mutate}")
     else:
         params_to_mutate = [rng.choice(list(param_spec.keys()))]
-        print(f"Mutating params : {params_to_mutate}")
+        logger.info(f"Mutating params : {params_to_mutate}")
 
     for param in params_to_mutate:
         # If the param isn't in the config, skip it to avoid KeyError
@@ -227,36 +237,31 @@ def mutate_config(
         # MUTATE INTEGER (e.g., vehicles_count)
         if spec["type"] == "int":
             # Dynamic step size logic
-            range_val = max(1, spec["max"] - spec["min"])
-            sigma = range_val * 0.1
-            delta = rng.standard_cauchy() * sigma
+            range = max(1, spec["max"] - spec["min"])
+            sigma = range * 0.3
+            delta = rng.standard_cauchy()
             new_val = int(round(current_val + delta))
 
             if new_val == current_val and abs(delta) > 0:
                 new_val += 1 if delta > 0 else -1
             new_cfg[param] = int(np.clip(new_val, spec["min"], spec["max"]))
-
-            # Ensure at least 1 unit move if delta is non-zero
-            # if abs(delta) > 0.1:
-            #     mutation = int(np.sign(delta) * np.ceil(abs(delta)))
-            # else:
-            #     mutation = 0
-
-            # Special case: Always try to move at least 1 if it's the only param we picked
-            # if mutation == 0 and len(params_to_mutate) == 1:
-            #     mutation = int(rng.choice([-1, 1]))
-
-            # new_val = int(current_val + mutation)
-            # new_cfg[param] = int(np.clip(new_val, spec["min"], spec["max"]))
+            logger.info(
+                f"  MUTATE {param}: {current_val:.4f} -> {new_cfg[param]:.4f} "
+                f"(raw: {new_val:.4f}, sigma: {sigma:.4f}, bounds: [{spec['min']},{spec['max']}])"
+            )
 
         # MUTATE FLOAT (e.g., spacing)
         elif spec["type"] == "float":
             range_width = spec["max"] - spec["min"]
-            sigma = range_width * 0.05  # 5% perturbation
+            sigma = range_width * 0.5  # 5% perturbation
             new_val = current_val + (rng.standard_cauchy() * sigma)
             new_cfg[param] = float(np.clip(new_val, spec["min"], spec["max"]))
+            logger.info(
+                f"  MUTATE {param}: {current_val:.4f} -> {new_cfg[param]:.4f} "
+                f"(raw : {new_val : .4f},sigma: {sigma:.4f}, bounds: [{spec['min']},{spec['max']}])"
+            )
 
-    # CONSTRAINT: Keep initial_lane_id valid if lanes_count changed
+    # Keep initial_lane_id valid if lanes_count changed
     if "lanes_count" in new_cfg and "initial_lane_id" in new_cfg:
         allowed_max = new_cfg["lanes_count"] - 1
         new_cfg["initial_lane_id"] = int(
@@ -330,10 +335,12 @@ def hill_climb(
     best_seed_base = seed_base
     history = [best_fit]
     print(f"Start Fitness: {best_fit:.4f} | Crash: {obj['crash_count']}")
+    logger.info(f"Start Fitness: {best_fit:.4f} | Crash: {obj['crash_count']}")
 
     # Early exit if we started with a crash
     if crashed or obj["crash_count"] == 1:
         print("INITIAL SCENARIO CRASHED")
+        logger.info(f"Collision found during the initial scenario")
         return {
             "best_cfg": best_cfg,
             "best_objectives": best_obj,
@@ -349,15 +356,19 @@ def hill_climb(
     local_minima_iterations = 0
     delta = 1e-3
 
-    for it in range(iterations):
+    for n in range(iterations):
 
         # Track best neighbor in this batch
+        logger.info(f"--- HC Iteration {n+1}/{iterations} ---")
+        logger.info(
+            f"Parent cfg: {current_cfg} | cur_fit={cur_fit:.6f} | best_fit={best_fit:.6f}"
+        )
         best_neighbor_cfg = None
         best_neighbor_fit = float("inf")
         best_neighbor_obj = None
         best_neighbor_seed = None
 
-        for n in range(neighbors_per_iter):
+        for i in range(neighbors_per_iter):
             # Generate Neighbor
             cand_cfg = mutate_config(current_cfg, param_spec, rng)
 
@@ -371,7 +382,8 @@ def hill_climb(
 
             # Check for immediate crash discovery
             if c_ts[-1]["episode_crash_val"]:
-                print(f"CRASH FOUND at Iteration {it}, Neighbor {n}")
+                print(f"CRASH FOUND at Iteration {n}, Neighbor {i}")
+                logger.info("Collision found at Iteration {n},Neighbor {i}")
                 return {
                     "best_cfg": cand_cfg,
                     "best_objectives": c_obj,
@@ -393,12 +405,10 @@ def hill_climb(
         # Use <= instead of < to allow the climber
         # To explore horizontally when in a local minima
         if best_neighbor_fit <= cur_fit:
-            print(
-                f"Iter {it}: Improved fitness {cur_fit:.4f} -> {best_neighbor_fit:.4f}"
-            )
-            current_cfg = best_neighbor_cfg
+            current_cfg = copy.deepcopy(best_neighbor_cfg)
             cur_fit = best_neighbor_fit
-            # Also update global best if strictly better
+            # Also update global best if better than delta
+            # This allows you to explore while still checking for local minima
             if abs(cur_fit - best_fit) >= delta:
                 local_minima_iterations = 0
                 best_cfg = copy.deepcopy(current_cfg)
@@ -419,7 +429,7 @@ def hill_climb(
 
         else:
             print(
-                f"Iter {it}: Stuck. Best neighbor ({best_neighbor_fit:.4f}) not better than current ({cur_fit:.4f})"
+                f"Iter {n}: Stuck. Best neighbor ({best_neighbor_fit:.4f}) not better than current ({cur_fit:.4f})"
             )
 
         history.append(best_fit)
