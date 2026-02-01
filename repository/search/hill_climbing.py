@@ -61,8 +61,14 @@ def compute_objectives_from_time_series(
           "min_distance": float
         }
 
-    NOTE: If you want, you can add more objectives (lane-specific distances, time-to-crash, etc.)
-    but keep the keys above at least.
+    Extra addded objectives:
+      - lane_changes: number of ego lane changes
+      - max_deceleration: max speed drop between consecutive frames (per step)
+      - max_acceleration: max speed increase between consecutive frames (per step)
+      - near_miss_count: #frames with distance < NEAR_MISS_THRESHOLD
+      - min_same_lane_distance: min distance to others in same lane (if lane_id available)
+      - min_adjacent_lane_distance: min distance to others in adjacent lanes (if lane_id available)
+      - lane_id_missing_ratio: fraction of frames where ego lane_id is None
     """
     near_miss_threshold = (
         2.0  # Threshold distance for near-miss counting (assumed pragmatically)
@@ -79,6 +85,14 @@ def compute_objectives_from_time_series(
 
     min_cost = float("inf")
     delta = 1e-6
+    prev_lane_id = None
+    prev_speed = None
+    min_same_lane_distance = float("inf")
+    min_adjacent_lane_distance = float("inf")
+    max_acceleration = float("-inf")
+    max_deceleration = float("inf")
+    lane_changes = 0
+    lane_id_missing = 0
 
     for frame in time_series:
         # Compute Distance
@@ -91,9 +105,33 @@ def compute_objectives_from_time_series(
         if not others:
             continue
 
-        # Find closest ttc in this specific frame
+        ego_lane = ego_data.get("lane_id", None)
+        if ego_lane is None:
+            lane_id_missing += 1
+
+        # lane changes count
+        if (
+            prev_lane_id is not None
+            and ego_lane is not None
+            and ego_lane != prev_lane_id
+        ):
+            lane_changes += 1
+        if ego_lane is not None:
+            prev_lane_id = ego_lane
+
+        speed = ego_data.get("speed", None)
+        if speed is not None and prev_speed is not None:
+            delta = speed - prev_speed
+            if delta > max_acceleration:
+                max_acceleration = delta
+            elif delta < max_deceleration:
+                max_deceleration = delta
+            prev_speed = speed
+
+        # distances to others
         frame_min_dist = float("inf")
 
+        # Find score and some other objectives for this frame
         for other in others:
             other_pos = np.array(other["pos"])
             dist = np.linalg.norm(ego_pos - other_pos)
@@ -101,30 +139,44 @@ def compute_objectives_from_time_series(
             # Update Global Minimum
             if dist < frame_min_dist:
                 frame_min_dist = dist
+            other_lane = other.get("lane_id")
+            if ego_lane is not None and other_lane is not None:
+                if other_lane == ego_lane:
+                    if dist < min_same_lane_distance:
+                        min_same_lane_distance = dist
+                elif abs(int(other_lane) - int(ego_lane)) == 1:
+                    if dist < min_adjacent_lane_distance:
+                        min_adjacent_lane_distance = dist
         frame_cost = frame_min_dist / (ego_data["speed"] ** 2 + delta)
         if frame_cost < min_cost:
             min_cost = frame_cost
 
-    # Safety fallback if no cars were seen
+    lane_id_missing_ratio = lane_id_missing / max(1, len(time_series))
 
     return {
         "crash_count": crash_count,
         "min_cost": min_cost,
+        # extra objectives
+        "lane_changes": lane_changes,
+        "max_deceleration": max_deceleration,
+        "max_acceleration": max_acceleration,
+        "min_same_lane_distance": min_same_lane_distance,
+        "min_adjacent_lane_distance": min_adjacent_lane_distance,
+        "lane_id_missing_ratio": lane_id_missing_ratio,
     }
 
 
 def compute_fitness(objectives: Dict[str, Any]) -> float:
     """
-    Convert objectives into ONE scalar fitness value to MINIMIZE.
     Returns
     -1 -> If crash detected
     min_dist/(velocity**2 + delta) -> otherwise
+    Because the score depends on both min_dist and velocity it is already precomputed in compute_ojectives
+    And is merely being returned here
     """
     crash = objectives.get("crash_count")
     cost = objectives.get("min_cost")
 
-    if crash:
-        print("Crash detected")
     return cost
 
 
