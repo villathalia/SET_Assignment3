@@ -329,7 +329,8 @@ def hill_climb(
                     "best_fitness": c_fit,
                     "best_seed_base": cand_seed,
                     "history": history + [c_fit],
-                    "evaluations": evals
+                    "evaluations": evals,
+                    "iterations_executed": it
                 }
 
             # Update best neighbor
@@ -362,5 +363,6 @@ def hill_climb(
         "best_fitness": best_fit,
         "best_seed_base": best_seed_base,
         "history": history,
-        "evaluations": evals
+        "evaluations": evals,
+        "iterations_executed": iterations
     }

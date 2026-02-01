@@ -28,18 +28,29 @@ def main():
             "evaluations": 50,
             "best_seed_base": getattr(search, "best_seed_base", 0)
         }
-        
-        # Save files and plot
         helper.save_result_json(rs_result, "rs_result.json")
         helper.save_objectives_csv(rs_result, "rs_best_objectives.csv")
         helper.plot_history(rs_result, "rs_fitness_history.png")
         
-        # Record video if crash found
         if helper.record_best_if_crash(rs_result, env_id, policy, defaults, out_dir="videos_rs"):
             print("Recorded best RS crash video.")
-    
+
+    # If RandomSearch.py is not updated, but found crashes
+    elif crashes:
+        print("⚠️ RandomSearch class not updated, but crashes were found.")
+        first_crash = crashes[0]
+        
+        rs_minimal_result = {
+            "best_cfg": first_crash['cfg'],
+            "best_seed_base": first_crash['seed'],
+            "best_objectives": {"crash_count": 1}
+        }
+        
+        if helper.record_best_if_crash(rs_minimal_result, env_id, policy, defaults, out_dir="videos_rs"):
+            print("✅ Recorded RS crash video.")  
     else:
         print("⚠️ RS results not tracked. Skipping save.")
+
 
     # --- Hill Climbing ---
     hc_result = hill_climb(
@@ -53,6 +64,7 @@ def main():
         neighbors_per_iter=10,
     )
     print("✅ Hill Climbing finished.")
+    hc_result["fitness_per_iteration"] = hc_result["history"]
     print("Best fitness:", hc_result["best_fitness"])
     print("Evaluations:", hc_result["evaluations"])
     print("Iterations:", hc_result["iterations_executed"])
