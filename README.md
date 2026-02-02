@@ -75,8 +75,9 @@ python main.py
 This will:
 - Load the pre-trained PPO policy.
 - Initialize a random highway scenario for HC search.
-- Iteratively mutate the scenario using hill climbing to search for failure-inducing      configurations.
+- First search using random search and produce collisions.
+- Next, Iteratively mutate the scenario using hill climbing to search for failure-inducing configurations.
 - Evaluate each candidate by running the environment and computing a fitness score.
 - Stop early if a collision is found or when progress plateau.
-- Record the best-found collision (if any) to `videos/` as an MP4 file.
+- Record the best-found collision (if any) to `hc_videos/` as an MP4 file.
 - Using hc_helper.py, save the results in a json file 'hc_result.json' and created a fitness vs number of iterations graph 'hc_fitness_history.png' to show the trend of the HC run.
