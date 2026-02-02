@@ -30,7 +30,6 @@ from typing import Dict, Any, List, Tuple, Optional
 import numpy as np
 
 from envs.highway_env_utils import run_episode
-
 from search.base_search import ScenarioSearch
 
 import search.helper_HC as helper
@@ -44,7 +43,7 @@ import logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(message)s",
-    handlers=[logging.FileHandler("hc_search.log")],
+    handlers=[logging.FileHandler("hc_search.log"), logging.StreamHandler()],
 )
 
 logger = logging.getLogger(__name__)
@@ -80,9 +79,8 @@ def compute_objectives_from_time_series(
       - min_adjacent_lane_distance: min distance to others in adjacent lanes (if lane_id available)
       - lane_id_missing_ratio: fraction of frames where ego lane_id is None
     """
-    near_miss_threshold = (
-        2.0  # Threshold distance for near-miss counting (assumed pragmatically)
-    )
+    # Threshold distance for near-miss counting (assumed pragmatically)
+    near_miss_threshold = 2.0
 
     # Initialize default values
     crash_count = 0
@@ -218,13 +216,10 @@ def mutate_config(
     """
     new_cfg = copy.deepcopy(cfg)
 
-    # 15% chance to mutate everything, 85% chance to mutate one thing
-    if rng.random() < 0.15:
-        params_to_mutate = list(param_spec.keys())
-        logger.info(f"Mutating params : {params_to_mutate}")
-    else:
-        params_to_mutate = [rng.choice(list(param_spec.keys()))]
-        logger.info(f"Mutating params : {params_to_mutate}")
+    num_mutations = rng.choice([1, 2, 3], p=[0.6, 0.3, 0.1])
+    params = list(param_spec.keys())
+    params_to_mutate = rng.choice(params, size=num_mutations, replace=False)
+    logger.info(f"Mutating params : {params_to_mutate}")
 
     for param in params_to_mutate:
         # If the param isn't in the config, skip it to avoid KeyError
@@ -238,8 +233,8 @@ def mutate_config(
         if spec["type"] == "int":
             # Dynamic step size logic
             range = max(1, spec["max"] - spec["min"])
-            sigma = range * 0.3
-            delta = rng.standard_cauchy()
+            sigma = range * 0.1
+            delta = rng.standard_cauchy() * sigma
             new_val = int(round(current_val + delta))
 
             if new_val == current_val and abs(delta) > 0:
@@ -247,18 +242,19 @@ def mutate_config(
             new_cfg[param] = int(np.clip(new_val, spec["min"], spec["max"]))
             logger.info(
                 f"  MUTATE {param}: {current_val:.4f} -> {new_cfg[param]:.4f} "
-                f"(raw: {new_val:.4f}, sigma: {sigma:.4f}, bounds: [{spec['min']},{spec['max']}])"
+                f"(raw: {new_val:.4f}, delta: {delta:.4f}, bounds: [{spec['min']},{spec['max']}])"
             )
 
         # MUTATE FLOAT (e.g., spacing)
         elif spec["type"] == "float":
             range_width = spec["max"] - spec["min"]
-            sigma = range_width * 0.5  # 5% perturbation
-            new_val = current_val + (rng.standard_cauchy() * sigma)
+            sigma = range_width * 0.05  # 5% perturbation
+            delta = rng.standard_cauchy() * sigma
+            new_val = current_val + delta
             new_cfg[param] = float(np.clip(new_val, spec["min"], spec["max"]))
             logger.info(
                 f"  MUTATE {param}: {current_val:.4f} -> {new_cfg[param]:.4f} "
-                f"(raw : {new_val : .4f},sigma: {sigma:.4f}, bounds: [{spec['min']},{spec['max']}])"
+                f"(raw : {new_val : .4f},delta: {delta:.4f}, bounds: [{spec['min']},{spec['max']}])"
             )
 
     # Keep initial_lane_id valid if lanes_count changed
@@ -382,8 +378,7 @@ def hill_climb(
 
             # Check for immediate crash discovery
             if c_ts[-1]["episode_crash_val"]:
-                print(f"CRASH FOUND at Iteration {n}, Neighbor {i}")
-                logger.info("Collision found at Iteration {n},Neighbor {i}")
+                logger.info(f"Collision found at Iteration {n+1},Neighbor {i+1}")
                 return {
                     "best_cfg": cand_cfg,
                     "best_objectives": c_obj,
@@ -391,7 +386,7 @@ def hill_climb(
                     "best_seed_base": seed_base,
                     "history": history + [c_fit],
                     "evaluations": evals,
-                    "iterations_executed": it,
+                    "iterations_executed": n,
                 }
 
             # Update best neighbor
@@ -431,8 +426,15 @@ def hill_climb(
             print(
                 f"Iter {n}: Stuck. Best neighbor ({best_neighbor_fit:.4f}) not better than current ({cur_fit:.4f})"
             )
+            local_minima_iterations += 1
+            if local_minima_iterations == random_restart_iterations:
+                print("Stuck in a local minima, performing a random restart")
+                current_cfg = ScenarioSearch(
+                    env_id, base_cfg, param_spec, policy, defaults
+                ).sample_random_config(rng)
+                seed_base = int(rng.integers(1e9))
 
-        history.append(best_fit)
+        history.append(cur_fit)
 
     return {
         "best_cfg": best_cfg,

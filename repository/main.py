@@ -1,21 +1,22 @@
 from config.search_space import param_spec, base_cfg
 from policies.pretrained_policy import load_pretrained_policy
-from envs.highway_env_utils import make_env
+from envs.highway_env_utils import make_env, record_video_episode
 from search.hill_climbing import hill_climb
 from search.random_search import RandomSearch
 import search.helper_HC as helper
+import time
 
 
 def main():
     env_id = "highway-fast-v0"
     policy = load_pretrained_policy("agents/model")
     env, defaults = make_env(env_id)
-    print(env, policy, defaults, sep="\n")
-
     # --- Random Search ---
-    """
     search = RandomSearch(env_id, base_cfg, param_spec, policy, defaults)
-    crashes = search.run_search(n_scenarios=50, seed=11)
+    start = time.time()
+    crashes = search.run_search(n_scenarios=50, seed=32)
+    end = time.time()
+    print(f"Random Search execution time : {end - start:.4f}s")
 
     print(f"Random Search found {len(crashes)} crashes.")
     if crashes:
@@ -58,8 +59,8 @@ def main():
     else:
         print("RS results not tracked. Skipping save.")
 
-    """
     # --- Hill Climbing ---
+    start = time.time()
     hc_result = hill_climb(
         env_id=env_id,
         base_cfg=base_cfg,
@@ -70,6 +71,8 @@ def main():
         iterations=100,
         neighbors_per_iter=10,
     )
+    end = time.time()
+    print(f"HC time : {end - start : .4f}s")
     print("Hill Climbing finished.")
     hc_result["fitness_per_iteration"] = hc_result["history"]
     print("Best fitness:", hc_result["best_fitness"])
@@ -79,18 +82,22 @@ def main():
     hc_crash_count = hc_result["best_objectives"]["crash_count"]
     if hc_crash_count:
         print(f"Hill Climbing found a crashes.")
-
-    # save results and record video if crash
-    helper.save_result_json(hc_result, "hc_result.json")
-    helper.save_objectives_csv(hc_result, "hc_best_objectives.csv")
-    # helper.plot_history(hc_result, "hc_fitness_history.png")
-    recorded_hc = helper.record_best_if_crash(
-        hc_result, env_id, policy, defaults, out_dir="videos"
-    )
-    if recorded_hc:
+        record_video_episode(
+            env_id,
+            hc_result["best_cfg"],
+            policy,
+            defaults,
+            hc_result["best_seed_base"],
+            out_dir="hc_videos/",
+        )
         print("Recorded best crash video.")
     else:
-        print("Best scenario did not crash; no video recorded.")
+        print("Best scenario did not crash")
+    # save results and plot values if crash
+    print(hc_result["history"])
+    helper.save_result_json(hc_result, "hc_result.json")
+    helper.save_objectives_csv(hc_result, "hc_best_objectives.csv")
+    helper.plot_history(hc_result, "hc_fitness_history.png")
 
 
 if __name__ == "__main__":

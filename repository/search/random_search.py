@@ -19,7 +19,6 @@ class RandomSearch:
 
         for i in trange(n_scenarios, desc="Random search"):
             cfg = self.sample_random_config(rng)
-            breakpoint()
             for j in range(n_eval):
                 s = int(rng.integers(1e9))
                 crashed, ts = run_episode(
