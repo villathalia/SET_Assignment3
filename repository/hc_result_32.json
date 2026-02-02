@@ -1,0 +1,30 @@
+{
+  "best_cfg": {
+    "lanes_count": 10,
+    "vehicles_count": 10,
+    "initial_spacing": 3.0750327296243776,
+    "ego_spacing": 3.0067453523914973,
+    "initial_lane_id": 3,
+    "duration": 30,
+    "simulation_frequency": 25,
+    "policy_frequency": 5
+  },
+  "best_objectives": {
+    "crash_count": 1,
+    "min_cost": -1
+  },
+  "best_fitness": -1,
+  "best_seed_base": 800122313,
+  "history": [
+    0.014812879670277777,
+    0.014812879670277777,
+    -1
+  ],
+  "evaluations": 19,
+  "iterations_executed": 1,
+  "fitness_per_iteration": [
+    0.014812879670277777,
+    0.014812879670277777,
+    -1
+  ]
+}

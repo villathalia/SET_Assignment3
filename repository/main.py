@@ -11,13 +11,13 @@ def main():
     env_id = "highway-fast-v0"
     policy = load_pretrained_policy("agents/model")
     env, defaults = make_env(env_id)
+
     # --- Random Search ---
     search = RandomSearch(env_id, base_cfg, param_spec, policy, defaults)
     start = time.time()
-    crashes = search.run_search(n_scenarios=50, seed=32)
+    crashes = search.run_search(n_scenarios=50, seed=11)
     end = time.time()
     print(f"Random Search execution time : {end - start:.4f}s")
-
     print(f"Random Search found {len(crashes)} crashes.")
     if crashes:
         print(crashes)
@@ -32,10 +32,7 @@ def main():
             "evaluations": 50,
             "best_seed_base": getattr(search, "best_seed_base", 0),
         }
-        helper.save_result_json(rs_result, "rs_result.json")
-        helper.save_objectives_csv(rs_result, "rs_best_objectives.csv")
-        helper.plot_history(rs_result, "rs_fitness_history.png")
-
+        
         if helper.record_best_if_crash(
             rs_result, env_id, policy, defaults, out_dir="videos_rs"
         ):

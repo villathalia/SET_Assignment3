@@ -182,6 +182,8 @@ def compute_fitness(objectives: Dict[str, Any]) -> float:
     Because the score depends on both min_dist and velocity it is already precomputed in compute_ojectives
     And is merely being returned here
     """
+
+    #Actual calculation is done in compute_objectives_from_time_series
     crash = objectives.get("crash_count")
     cost = objectives.get("min_cost")
 
@@ -366,6 +368,7 @@ def hill_climb(
 
         for i in range(neighbors_per_iter):
             # Generate Neighbor
+            logger.info(f"--- Neighbour Iteration {i+1}/{neighbors_per_iter} ---")
             cand_cfg = mutate_config(current_cfg, param_spec, rng)
 
             # Evaluate
@@ -397,38 +400,43 @@ def hill_climb(
                 best_neighbor_obj = c_obj
                 best_neighbor_seed = seed_base
 
+            logger.info(f"C_fit {c_fit:.6f} | best_neighbor_fit {best_neighbor_fit:.6f} | In each Neighbour Iteration {i+1}/{neighbors_per_iter}")
+
         # Use <= instead of < to allow the climber
         # To explore horizontally when in a local minima
+        
+        logger.info(f" Bfore Updation - Present Global best_fit {best_fit:.6f} | Cur_fit {cur_fit:.6f} | best_neighbor_fit {best_neighbor_fit:.6f} | Iteration {n+1}")
         if best_neighbor_fit <= cur_fit:
             current_cfg = copy.deepcopy(best_neighbor_cfg)
             cur_fit = best_neighbor_fit
             # Also update global best if better than delta
             # This allows you to explore while still checking for local minima
-            if abs(cur_fit - best_fit) >= delta:
+            if best_fit - cur_fit >= delta:
                 local_minima_iterations = 0
                 best_cfg = copy.deepcopy(current_cfg)
                 best_fit = cur_fit
                 best_obj = best_neighbor_obj
                 best_seed_base = best_neighbor_seed
+                logger.info(f" Updated Global best_fit {best_fit:.6f} | Iteration {n+1}")
             else:
                 local_minima_iterations += 1
-                print(
+                logger.info(
                     f"No significant improvement in {local_minima_iterations} iteration(s)"
                 )
                 if local_minima_iterations == random_restart_iterations:
-                    print("Stuck in a local minima, performing a random restart")
+                    logger.info(f"Stuck in a local minima, performing a random restart | restart number: {local_minima_iterations}")
                     current_cfg = ScenarioSearch(
                         env_id, base_cfg, param_spec, policy, defaults
                     ).sample_random_config(rng)
                     seed_base = int(rng.integers(1e9))
 
         else:
-            print(
+            logger.info(
                 f"Iter {n}: Stuck. Best neighbor ({best_neighbor_fit:.4f}) not better than current ({cur_fit:.4f})"
             )
             local_minima_iterations += 1
             if local_minima_iterations == random_restart_iterations:
-                print("Stuck in a local minima, performing a random restart")
+                logger.info("Stuck in a local minima, performing a random restart")
                 current_cfg = ScenarioSearch(
                     env_id, base_cfg, param_spec, policy, defaults
                 ).sample_random_config(rng)

@@ -1,0 +1,64 @@
+Running Random Search for 50 scenarios...
+Random search:   0%|                                                                 | 0/50 [00:00<?, ?it/s]No Crash: scenario 0, seed=28689008
+Random search:   2%|█▏                                                       | 1/50 [00:03<02:45,  3.37s/it]No Crash: scenario 1, seed=129773949
+Random search:   4%|██▎                                                      | 2/50 [00:07<03:05,  3.86s/it]No Crash: scenario 2, seed=511390021
+Random search:   6%|███▍                                                     | 3/50 [00:31<10:12, 13.02s/it]No Crash: scenario 3, seed=788039594
+Random search:   8%|████▌                                                    | 4/50 [00:45<10:23, 13.55s/it]No Crash: scenario 4, seed=549075268
+Random search:  10%|█████▋                                                   | 5/50 [01:00<10:29, 13.99s/it]   Collision: scenario 5, seed=483624696
+C:\Users\user\OneDrive\Documents\GitHub\SET_Assignment3\.venv\lib\site-packages\gymnasium\wrappers\rendering.py:283: UserWarning: WARN: Overwriting existing videos at C:\Users\user\OneDrive\Documents\GitHub\SET_Assignment3\repository\videos\scenario_seed_483624696 folder (try specifying a different `video_folder` for the `RecordVideo` wrapper if this is not desired)
+  logger.warn(
+Random search:  12%|██████▊                                                  | 6/50 [01:31<14:34, 19.88s/it]No Crash: scenario 6, seed=802202683
+Random search:  14%|███████▉                                                 | 7/50 [01:40<11:38, 16.24s/it]No Crash: scenario 7, seed=277144892
+Random search:  16%|█████████                                                | 8/50 [02:03<12:45, 18.23s/it]No Crash: scenario 8, seed=147691299
+Random search:  18%|██████████▎                                              | 9/50 [02:06<09:14, 13.52s/it]No Crash: scenario 9, seed=217148257
+Random search:  20%|███████████▏                                            | 10/50 [02:22<09:38, 14.46s/it]No Crash: scenario 10, seed=468908163
+Random search:  22%|████████████▎                                           | 11/50 [02:25<07:04, 10.90s/it]No Crash: scenario 11, seed=16877214
+Random search:  24%|█████████████▍                                          | 12/50 [02:48<09:16, 14.65s/it]No Crash: scenario 12, seed=691039916
+Random search:  26%|██████████████▌                                         | 13/50 [02:53<07:07, 11.54s/it]No Crash: scenario 13, seed=587881940
+Random search:  28%|███████████████▋                                        | 14/50 [02:57<05:29,  9.16s/it]No Crash: scenario 14, seed=172669600
+Random search:  30%|████████████████▊                                       | 15/50 [03:04<04:58,  8.53s/it]No Crash: scenario 15, seed=127202915
+Random search:  32%|█████████████████▉                                      | 16/50 [03:07<03:52,  6.85s/it]No Crash: scenario 16, seed=598392107
+Random search:  34%|███████████████████                                     | 17/50 [03:28<06:09, 11.21s/it]No Crash: scenario 17, seed=190170016
+Random search:  36%|████████████████████▏                                   | 18/50 [03:53<08:11, 15.34s/it]No Crash: scenario 18, seed=727111743
+Random search:  38%|█████████████████████▎                                  | 19/50 [03:57<06:09, 11.91s/it]No Crash: scenario 19, seed=315182747
+Random search:  40%|██████████████████████▍                                 | 20/50 [04:08<05:53, 11.80s/it]No Crash: scenario 20, seed=340686175
+Random search:  42%|███████████████████████▌                                | 21/50 [04:14<04:52, 10.07s/it]No Crash: scenario 21, seed=40013102
+Random search:  44%|████████████████████████▋                               | 22/50 [04:25<04:46, 10.21s/it]No Crash: scenario 22, seed=845224981
+Random search:  46%|█████████████████████████▊                              | 23/50 [04:28<03:35,  7.99s/it]No Crash: scenario 23, seed=692279106
+Random search:  48%|██████████████████████████▉                             | 24/50 [04:45<04:42, 10.88s/it]No Crash: scenario 24, seed=626130157
+Random search:  50%|████████████████████████████                            | 25/50 [05:05<05:41, 13.65s/it]No Crash: scenario 25, seed=894697793
+Random search:  52%|█████████████████████████████                           | 26/50 [05:10<04:19, 10.81s/it]No Crash: scenario 26, seed=163056832
+Random search:  54%|██████████████████████████████▏                         | 27/50 [05:27<04:56, 12.89s/it]No Crash: scenario 27, seed=357219712
+Random search:  56%|███████████████████████████████▎                        | 28/50 [05:53<06:05, 16.61s/it]No Crash: scenario 28, seed=159748239
+Random search:  58%|████████████████████████████████▍                       | 29/50 [05:55<04:21, 12.46s/it]No Crash: scenario 29, seed=6477700
+Random search:  60%|█████████████████████████████████▌                      | 30/50 [06:06<04:00, 12.00s/it]No Crash: scenario 30, seed=161012712
+Random search:  62%|██████████████████████████████████▋                     | 31/50 [06:20<03:59, 12.61s/it]No Crash: scenario 31, seed=223802126
+Random search:  64%|███████████████████████████████████▊                    | 32/50 [06:30<03:32, 11.83s/it]No Crash: scenario 32, seed=82476841
+Random search:  66%|████████████████████████████████████▉                   | 33/50 [06:54<04:21, 15.38s/it]No Crash: scenario 33, seed=403083572
+Random search:  68%|██████████████████████████████████████                  | 34/50 [07:16<04:36, 17.27s/it]No Crash: scenario 34, seed=488193338
+Random search:  70%|███████████████████████████████████████▏                | 35/50 [07:37<04:38, 18.53s/it]No Crash: scenario 35, seed=610236494
+Random search:  72%|████████████████████████████████████████▎               | 36/50 [07:56<04:21, 18.71s/it]No Crash: scenario 36, seed=75844719
+Random search:  74%|█████████████████████████████████████████▍              | 37/50 [08:11<03:47, 17.54s/it]No Crash: scenario 37, seed=296064868
+Random search:  76%|██████████████████████████████████████████▌             | 38/50 [08:18<02:53, 14.48s/it]No Crash: scenario 38, seed=33794928
+Random search:  78%|███████████████████████████████████████████▋            | 39/50 [08:31<02:31, 13.81s/it]No Crash: scenario 39, seed=374587649
+Random search:  80%|████████████████████████████████████████████▊           | 40/50 [08:49<02:32, 15.25s/it]No Crash: scenario 40, seed=673346321
+Random search:  82%|█████████████████████████████████████████████▉          | 41/50 [08:53<01:46, 11.87s/it]No Crash: scenario 41, seed=96055406
+Random search:  84%|███████████████████████████████████████████████         | 42/50 [09:07<01:39, 12.41s/it]No Crash: scenario 42, seed=154913085
+Random search:  86%|████████████████████████████████████████████████▏       | 43/50 [09:14<01:15, 10.74s/it]No Crash: scenario 43, seed=901799659
+Random search:  88%|█████████████████████████████████████████████████▎      | 44/50 [09:34<01:21, 13.50s/it]No Crash: scenario 44, seed=340082364
+Random search:  90%|██████████████████████████████████████████████████▍     | 45/50 [09:53<01:16, 15.20s/it]No Crash: scenario 45, seed=149217501
+Random search:  92%|███████████████████████████████████████████████████▌    | 46/50 [10:11<01:04, 16.06s/it]   Collision: scenario 46, seed=194948991
+C:\Users\user\OneDrive\Documents\GitHub\SET_Assignment3\.venv\lib\site-packages\gymnasium\wrappers\rendering.py:283: UserWarning: WARN: Overwriting existing videos at C:\Users\user\OneDrive\Documents\GitHub\SET_Assignment3\repository\videos\scenario_seed_194948991 folder (try specifying a different `video_folder` for the `RecordVideo` wrapper if this is not desired)
+  logger.warn(
+Random search:  94%|████████████████████████████████████████████████████▋   | 47/50 [10:26<00:46, 15.62s/it]No Crash: scenario 47, seed=814603599
+Random search:  96%|█████████████████████████████████████████████████████▊  | 48/50 [10:49<00:35, 17.96s/it]No Crash: scenario 48, seed=524532758
+Random search:  98%|██████████████████████████████████████████████████████▉ | 49/50 [11:05<00:17, 17.47s/it]No Crash: scenario 49, seed=748377414
+Random search: 100%|████████████████████████████████████████████████████████| 50/50 [11:15<00:00, 13.52s/it] 
+Random Search execution time : 675.9416s
+Random Search found 3 crashes.
+[{'cfg': {'lanes_count': 10, 'vehicles_count': 59, 'initial_spacing': 1.420292575985202, 'ego_spacing': 2.6611910885956833, 'initial_lane_id': 8, 'duration': 30, 'simulation_frequency': 25, 'policy_frequency': 5}, 'seed': 483624696}, 
+{'cfg': {'lanes_count': 8, 'vehicles_count': 43, 'initial_spacing': 3.0181906152657194, 'ego_spacing': 3.3488248533909575, 'initial_lane_id': 5, 'duration': 30, 'simulation_frequency': 25, 'policy_frequency': 5}, 'seed': 194948991}]
+RandomSearch class not updated, but crashes were found.
+C:\Users\user\OneDrive\Documents\GitHub\SET_Assignment3\.venv\lib\site-packages\gymnasium\wrappers\rendering.py:283: UserWarning: WARN: Overwriting existing videos at C:\Users\user\OneDrive\Documents\GitHub\SET_Assignment3\repository\videos_rs\scenario_seed_483624696 folder (try specifying a different `video_folder` for the `RecordVideo` wrapper if this is not desired)
+  logger.warn(
+Recorded RS crash video.
